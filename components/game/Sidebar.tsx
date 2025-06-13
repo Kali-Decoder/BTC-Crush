@@ -10,20 +10,9 @@ interface SidebarProps {
 export function Sidebar({ side, lives }: SidebarProps) {
   if (side === 'left') {
     return (
-      <div className="fixed left-4 top-4 bottom-4 w-20 bg-pink-400/80 backdrop-blur-sm rounded-3xl shadow-2xl border border-pink-300/50 flex flex-col items-center py-6 z-10">
-        {/* Lives Counter */}
-        <div className="bg-white/90 rounded-2xl p-3 mb-4 shadow-lg">
-          <div className="flex items-center justify-center mb-2">
-            <Heart className="w-6 h-6 text-red-500 fill-red-500" />
-            <span className="ml-1 font-bold text-pink-600">{lives}</span>
-          </div>
-          <div className="text-xs text-pink-600 font-semibold">Full</div>
-        </div>
-
-        {/* Timer */}
-        <div className="bg-white/90 rounded-2xl p-3 mb-4 shadow-lg">
-          <div className="text-xs text-purple-600 font-bold">50:50:04</div>
-        </div>
+      <div className="fixed left-4 h-[30%] top-4 bottom-4 w-20 bg-pink-400/80 backdrop-blur-sm rounded-3xl shadow-2xl border border-pink-300/50 flex flex-col items-center py-6 z-10">
+        
+        
 
         {/* Booster Item */}
         <div className="bg-white/90 rounded-2xl p-3 mb-4 shadow-lg cursor-pointer hover:scale-105 transition-transform relative">
@@ -47,14 +36,8 @@ export function Sidebar({ side, lives }: SidebarProps) {
   }
 
   return (
-    <div className="fixed right-4 top-4 bottom-4 w-20 bg-pink-400/80 backdrop-blur-sm rounded-3xl shadow-2xl border border-pink-300/50 flex flex-col items-center py-6 z-10">
-      {/* Episode Progress */}
-      <div className="bg-white/90 rounded-2xl p-3 mb-4 shadow-lg">
-        <div className="w-12 h-12 bg-purple-500 rounded-xl flex items-center justify-center mb-2">
-          <Film className="w-6 h-6 text-white" />
-        </div>
-        <div className="text-xs text-center font-bold text-purple-600">Episode</div>
-      </div>
+    <div className="fixed right-4 h-[20%] top-4 bottom-4 w-20 bg-pink-400/80 backdrop-blur-sm rounded-3xl shadow-2xl border border-pink-300/50 flex flex-col items-center py-6 z-10">
+      
 
       {/* Booster 1 */}
       <div className="bg-white/90 rounded-2xl p-3 mb-4 shadow-lg cursor-pointer hover:scale-105 transition-transform relative">
