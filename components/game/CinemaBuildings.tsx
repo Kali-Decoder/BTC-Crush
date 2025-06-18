@@ -8,7 +8,7 @@ export function CinemaBuildings() {
      
 
       {/* Popcorn Stands */}
-      <div className="absolute top-20 left-20 z-0">
+      {/* <div className="absolute top-20 left-20 z-0">
         <div className="w-16 h-16 bg-gradient-to-b from-blue-400 to-blue-600 rounded-lg shadow-lg border-2 border-blue-700">
           <Popcorn className="w-8 h-8 text-white mx-auto mt-2" />
         </div>
@@ -18,7 +18,7 @@ export function CinemaBuildings() {
         <div className="w-20 h-16 bg-gradient-to-b from-purple-400 to-purple-600 rounded-lg shadow-lg border-2 border-purple-700">
           <Camera className="w-8 h-8 text-white mx-auto mt-2" />
         </div>
-      </div>
+      </div> */}
 
 
       {/* Character - Bottom Left */}

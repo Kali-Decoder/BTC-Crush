@@ -6,6 +6,8 @@ export interface Level {
   x: number;
   y: number;
   type?: 'normal' | 'special' | 'boss';
+  interestRate: number; // Annual interest rate in %
+  lockPeriod: number; // Lock period in days
 }
 
 export interface GameState {

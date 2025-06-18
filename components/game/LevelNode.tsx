@@ -34,7 +34,7 @@ export function LevelNode({ level, isSelected, onLevelClick }: LevelNodeProps) {
       style={{ 
         left: `${level.x}%`, 
         top: `${level.y}%`,
-        zIndex: 2
+        zIndex: 1
       }}
       onClick={() => onLevelClick(level)}
     >

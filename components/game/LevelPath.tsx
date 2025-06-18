@@ -34,6 +34,25 @@ export function LevelPath({ levels }: LevelPathProps) {
           />
         );
       })}
+      {/* Endless/Cloudy Effect at the End */}
+      {levels.length > 0 && (
+        <g>
+          <defs>
+            <radialGradient id="cloudFade" cx="50%" cy="50%" r="50%">
+              <stop offset="60%" stopColor="#fff" stopOpacity="0.9" />
+              <stop offset="100%" stopColor="#fff" stopOpacity="0" />
+            </radialGradient>
+          </defs>
+          <ellipse
+            cx="50%"
+            cy={`calc(${levels[levels.length - 1].y}% + 6%)`}
+            rx="1200"
+            ry="200"
+            fill="url(#cloudFade)"
+            style={{ filter: 'blur(2px)' }}
+          />
+        </g>
+      )}
     </svg>
   );
 }

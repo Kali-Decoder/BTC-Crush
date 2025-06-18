@@ -1,4 +1,4 @@
-// File: /Users/nikku.jr.dev/Downloads/BTC-Crush/app/page.tsx
+// File: /Users/snehagupta/Desktop/BTC-Crush/app/page.tsx
 import * as entry from '../../../app/page.js'
 import type { ResolvingMetadata } from 'next/dist/lib/metadata/types/metadata-interface.js'
 
