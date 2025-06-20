@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Level } from '@/types/level';
 import { ethers } from 'ethers';
 import { useWallet } from '@/components/WalletProvider';
+import { getFBTCToken, VAULT_ADDRESS } from '@/lib/vault';
 
 interface LevelModalProps {
   selectedLevel: Level | null;
@@ -27,8 +28,13 @@ export function LevelModal({ selectedLevel, onClose }: LevelModalProps) {
   const [redeemLoading, setRedeemLoading] = useState(false);
   const [redeemSuccess, setRedeemSuccess] = useState<string | null>(null);
   const [redeemError, setRedeemError] = useState<string | null>(null);
+  const [approvalLoading, setApprovalLoading] = useState(false);
+  const [approvalSuccess, setApprovalSuccess] = useState<string | null>(null);
+  const [approvalError, setApprovalError] = useState<string | null>(null);
+  const [allowance, setAllowance] = useState<ethers.BigNumberish>(0);
+  const [fbtcBalance, setFbtcBalance] = useState<ethers.BigNumberish>(0);
 
-  const { address, contract, connectWallet } = useWallet();
+  const { address, contract, connectWallet, signer } = useWallet();
 
   // Timer update
   React.useEffect(() => {
@@ -47,8 +53,10 @@ export function LevelModal({ selectedLevel, onClose }: LevelModalProps) {
       if (!selectedLevel || !address || !contract) return;
       setVaultLoading(true);
       try {
-        const deposit = await contract.depositOf(selectedLevel.id);
-        const shares = await contract.sharesAmount(selectedLevel.id, address);
+        const [deposit, shares] = await Promise.all([
+          contract.depositOf(selectedLevel.id),
+          contract.sharesAmount(selectedLevel.id, address),
+        ]);
         setUserDeposit(deposit);
         setUserShares(shares);
       } catch (e) {
@@ -59,6 +67,25 @@ export function LevelModal({ selectedLevel, onClose }: LevelModalProps) {
     fetchData();
   }, [selectedLevel, address, contract, success, redeemSuccess]);
 
+  // Fetch fBTC allowance and balance
+  React.useEffect(() => {
+    async function fetchTokenData() {
+      if (!address || !signer) return;
+      try {
+        const fbtcContract = getFBTCToken(signer);
+        const [allowanceAmount, balance] = await Promise.all([
+          fbtcContract.allowance(address, VAULT_ADDRESS),
+          fbtcContract.balanceOf(address),
+        ]);
+        setAllowance(allowanceAmount);
+        setFbtcBalance(balance);
+      } catch (e) {
+        // ignore for now
+      }
+    }
+    fetchTokenData();
+  }, [address, signer, approvalSuccess]);
+
   if (!selectedLevel) return null;
 
   const { id, interestRate, lockPeriod } = selectedLevel;
@@ -66,6 +93,36 @@ export function LevelModal({ selectedLevel, onClose }: LevelModalProps) {
   const yieldAmount = ((parsedAmount * (interestRate / 100)) * (lockPeriod / 365)).toFixed(4);
 
   const userSharesBigInt = typeof userShares === 'bigint' ? userShares : BigInt(userShares?.toString?.() || '0');
+  const amountBigInt = ethers.parseUnits(amount || '0', 18);
+  const allowanceBigInt = typeof allowance === 'bigint' ? allowance : BigInt(allowance?.toString?.() || '0');
+  const needsApproval = amountBigInt > allowanceBigInt;
+
+  // Debug logs
+  console.log('amountBigInt:', amountBigInt.toString());
+  console.log('allowanceBigInt:', allowanceBigInt.toString());
+  console.log('needsApproval:', needsApproval);
+
+  const handleApprove = async () => {
+    if (!address || !signer) return;
+    setApprovalLoading(true);
+    setApprovalError(null);
+    setApprovalSuccess(null);
+    try {
+      const fbtcContract = getFBTCToken(signer);
+      console.log('approving', VAULT_ADDRESS);
+      console.log('fbtcContract', fbtcContract);
+      console.log('address', address);
+      console.log('signer', signer);
+      const tx = await fbtcContract.approve(VAULT_ADDRESS, ethers.MaxUint256);
+      await tx.wait();
+      setApprovalSuccess('Approval successful!');
+      
+     
+    } catch (e: any) {
+      setApprovalError(e.message || 'Approval failed');
+    }
+    setApprovalLoading(false);
+  };
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -139,26 +196,7 @@ export function LevelModal({ selectedLevel, onClose }: LevelModalProps) {
                 </form>
               ) : (
                 // Lock form
-                <form
-                  className="flex flex-col items-center gap-4"
-                  onSubmit={async e => {
-                    e.preventDefault();
-                    if (!contract) return;
-                    setLoading(true);
-                    setError(null);
-                    setSuccess(null);
-                    try {
-                      // Convert to 18 decimals for fBTC
-                      const amt = ethers.parseUnits(amount, 18);
-                      await contract.deposit(id, amt);
-                      setSuccess('Deposit successful!');
-                      setAmount('');
-                    } catch (e: any) {
-                      setError(e.message || 'Deposit failed');
-                    }
-                    setLoading(false);
-                  }}
-                >
+                <div className="flex flex-col items-center gap-4">
                   <input
                     type="number"
                     min="0"
@@ -170,16 +208,56 @@ export function LevelModal({ selectedLevel, onClose }: LevelModalProps) {
                     required
                   />
                   <div className="text-xs text-gray-500 mb-2">Expected yield: <span className="font-bold text-green-600">{yieldAmount} fBTC</span></div>
-                  <button
-                    type="submit"
-                    className="w-full py-3 rounded-xl bg-gradient-to-r from-pink-400 to-yellow-400 text-white font-extrabold text-lg shadow-lg hover:scale-105 transition-transform flex items-center justify-center gap-2 animate-candy"
-                    disabled={loading || !contract}
+                  
+                  {/* Approval button */}
+                  {needsApproval && amount && (
+                    <button
+                      className="w-full py-3 rounded-xl bg-gradient-to-r from-orange-400 to-red-400 text-white font-extrabold text-lg shadow-lg hover:scale-105 transition-transform flex items-center justify-center gap-2 animate-candy"
+                      onClick={handleApprove}
+                      disabled={approvalLoading}
+                    >
+                      {approvalLoading ? 'Approving...' : '🔓 Approve fBTC'}
+                    </button>
+                  )}
+                  
+                  {/* Deposit button */}
+                  <form
+                    className="w-full"
+                    onSubmit={async e => {
+                      e.preventDefault();
+                      if (!contract) return;
+                      setLoading(true);
+                      setError(null);
+                      setSuccess(null);
+                      try {
+                        // Convert to 18 decimals for fBTC
+                        const amt = ethers.parseUnits(amount, 18);
+                        console.log('depositing', amt);
+                        console.log('contract', contract);
+                        console.log('id', id);
+                        await contract.deposit(1, amt);
+                        setSuccess('Deposit successful!');
+                        setAmount('');
+                      } catch (e: any) {
+                        setError(e.message || 'Deposit failed');
+                      }
+                      setLoading(false);
+                    }}
                   >
-                    {loading ? 'Locking...' : '🍭 Lock Now!'}
-                  </button>
+                    <button
+                      type="submit"
+                      className="w-full py-3 rounded-xl bg-gradient-to-r from-pink-400 to-yellow-400 text-white font-extrabold text-lg shadow-lg hover:scale-105 transition-transform flex items-center justify-center gap-2 animate-candy"
+                      disabled={loading || !contract || needsApproval}
+                    >
+                      {loading ? 'Locking...' : '🍭 Lock Now!'}
+                    </button>
+                  </form>
+                  
+                  {approvalSuccess && <div className="text-green-600 text-sm mt-2">{approvalSuccess}</div>}
+                  {approvalError && <div className="text-red-600 text-sm mt-2">{approvalError}</div>}
                   {success && <div className="text-green-600 text-sm mt-2">{success}</div>}
                   {error && <div className="text-red-600 text-sm mt-2">{error}</div>}
-                </form>
+                </div>
               )}
             </>
           )}

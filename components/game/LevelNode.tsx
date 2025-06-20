@@ -2,6 +2,7 @@
 
 import { Star, Crown } from 'lucide-react';
 import { Level } from '@/types/level';
+import { useState, useEffect } from 'react';
 
 interface LevelNodeProps {
   level: Level;
@@ -10,6 +11,45 @@ interface LevelNodeProps {
 }
 
 export function LevelNode({ level, isSelected, onLevelClick }: LevelNodeProps) {
+  const [progress, setProgress] = useState(0);
+  const [timeLeft, setTimeLeft] = useState('');
+
+  // Calculate progress for time lock vault
+  useEffect(() => {
+    if (level.id === 1) {
+      const startDate = new Date('2025-06-20T17:30:00Z'); // 11 PM IST = 5:30 PM UTC
+      const now = new Date();
+      const lockPeriodMs = level.lockPeriod * 24 * 60 * 60 * 1000; // Convert days to milliseconds
+      const endDate = new Date(startDate.getTime() + lockPeriodMs);
+      
+      if (now < startDate) {
+        // Vault hasn't started yet
+        setProgress(0);
+        const timeUntilStart = startDate.getTime() - now.getTime();
+        const days = Math.floor(timeUntilStart / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((timeUntilStart % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        setTimeLeft(`Starts in ${days}d ${hours}h`);
+      } else if (now >= endDate) {
+        // Vault has completed
+        setProgress(100);
+        setTimeLeft('Completed');
+      } else {
+        // Vault is in progress
+        const elapsed = now.getTime() - startDate.getTime();
+        const progressPercent = Math.min((elapsed / lockPeriodMs) * 100, 100);
+        setProgress(progressPercent);
+        
+        const remaining = endDate.getTime() - now.getTime();
+        const days = Math.floor(remaining / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((remaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        setTimeLeft(`${days}d ${hours}h left`);
+      }
+    } else {
+      setProgress(0);
+      setTimeLeft('Locked');
+    }
+  }, [level]);
+
   const getLevelStyles = () => {
     if (level.locked) {
       return 'bg-gray-400 border-gray-500 cursor-not-allowed';
@@ -83,6 +123,19 @@ export function LevelNode({ level, isSelected, onLevelClick }: LevelNodeProps) {
             <div className="absolute -bottom-1 -right-1 w-2 h-2 bg-red-400 rounded-full animate-pulse" style={{ animationDelay: '0.5s' }}></div>
           </>
         )}
+      </div>
+
+      {/* Progress bar below level circle */}
+      <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-20">
+        <div className="bg-gray-200 rounded-full h-2 w-full">
+          <div 
+            className="bg-gradient-to-r from-pink-400 to-yellow-400 h-2 rounded-full transition-all duration-500"
+            style={{ width: `${progress}%` }}
+          ></div>
+        </div>
+        <div className="text-xs text-gray-600 text-center mt-1 font-mono">
+          {timeLeft}
+        </div>
       </div>
     </div>
   );
