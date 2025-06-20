@@ -36,6 +36,16 @@ export function LevelModal({ selectedLevel, onClose }: LevelModalProps) {
 
   const { address, contract, connectWallet, signer } = useWallet();
 
+  // Time lock logic for Level 1 - moved to top with other hooks
+  const isTimeLockComplete = React.useMemo(() => {
+    if (!selectedLevel || selectedLevel.id !== 1) return false; // Only Level 1 has time lock
+    const startDate = new Date('2025-06-20T17:30:00Z'); // 11 PM IST = 5:30 PM UTC
+    const now = new Date();
+    const lockPeriodMs = selectedLevel.lockPeriod * 24 * 60 * 60 * 1000; // Convert days to milliseconds
+    const endDate = new Date(startDate.getTime() + lockPeriodMs);
+    return now >= endDate;
+  }, [selectedLevel]);
+
   // Timer update
   React.useEffect(() => {
     if (!selectedLevel) return;
@@ -97,10 +107,15 @@ export function LevelModal({ selectedLevel, onClose }: LevelModalProps) {
   const allowanceBigInt = typeof allowance === 'bigint' ? allowance : BigInt(allowance?.toString?.() || '0');
   const needsApproval = amountBigInt > allowanceBigInt;
 
+  const canRedeem = userSharesBigInt > 0n && isTimeLockComplete;
+
   // Debug logs
   console.log('amountBigInt:', amountBigInt.toString());
   console.log('allowanceBigInt:', allowanceBigInt.toString());
   console.log('needsApproval:', needsApproval);
+  console.log('userSharesBigInt:', userSharesBigInt.toString());
+  console.log('isTimeLockComplete:', isTimeLockComplete);
+  console.log('canRedeem:', canRedeem);
 
   const handleApprove = async () => {
     if (!address || !signer) return;
@@ -165,35 +180,64 @@ export function LevelModal({ selectedLevel, onClose }: LevelModalProps) {
           {address && !vaultLoading && (
             <>
               {userSharesBigInt > 0n ? (
-                // Redeem UI
-                <form
-                  className="flex flex-col items-center gap-4"
-                  onSubmit={async e => {
-                    e.preventDefault();
-                    if (!contract) return;
-                    setRedeemLoading(true);
-                    setRedeemError(null);
-                    setRedeemSuccess(null);
-                    try {
-                      await contract.redeem(id, userSharesBigInt);
-                      setRedeemSuccess('Redeemed successfully!');
-                    } catch (e: any) {
-                      setRedeemError(e.message || 'Redeem failed');
-                    }
-                    setRedeemLoading(false);
-                  }}
-                >
+                // Show shares info and redeem status
+                <div className="flex flex-col items-center gap-4">
                   <div className="text-lg font-bold text-pink-500">You have {ethers.formatUnits(userSharesBigInt, 18)} shares</div>
-                  <button
-                    type="submit"
-                    className="w-full py-3 rounded-xl bg-gradient-to-r from-green-400 to-yellow-400 text-white font-extrabold text-lg shadow-lg hover:scale-105 transition-transform flex items-center justify-center gap-2 animate-candy"
-                    disabled={redeemLoading || !contract}
-                  >
-                    {redeemLoading ? 'Redeeming...' : '🎁 Redeem Now!'}
-                  </button>
-                  {redeemSuccess && <div className="text-green-600 text-sm mt-2">{redeemSuccess}</div>}
-                  {redeemError && <div className="text-red-600 text-sm mt-2">{redeemError}</div>}
-                </form>
+                  
+                  {/* Time lock status */}
+                  {id === 1 && (
+                    <div className="text-sm text-gray-600 text-center">
+                      {isTimeLockComplete ? (
+                        <span className="text-green-600 font-bold">✅ Time lock completed!</span>
+                      ) : (
+                        <span className="text-orange-600 font-bold">⏳ Time lock in progress...</span>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Redeem button - only if time lock is complete */}
+                  {canRedeem ? (
+                    <form
+                      className="flex flex-col items-center gap-4"
+                      onSubmit={async e => {
+                        e.preventDefault();
+                        if (!contract) return;
+                        setRedeemLoading(true);
+                        setRedeemError(null);
+                        setRedeemSuccess(null);
+                        try {
+                          await contract.redeem(id, userSharesBigInt);
+                          setRedeemSuccess('Redeemed successfully!');
+                        } catch (e: any) {
+                          setRedeemError(e.message || 'Redeem failed');
+                        }
+                        setRedeemLoading(false);
+                      }}
+                    >
+                      <button
+                        type="submit"
+                        className="w-full py-3 rounded-xl bg-gradient-to-r from-green-400 to-yellow-400 text-white font-extrabold text-lg shadow-lg hover:scale-105 transition-transform flex items-center justify-center gap-2 animate-candy"
+                        disabled={redeemLoading || !contract}
+                      >
+                        {redeemLoading ? 'Redeeming...' : '🎁 Redeem Now!'}
+                      </button>
+                      {redeemSuccess && <div className="text-green-600 text-sm mt-2">{redeemSuccess}</div>}
+                      {redeemError && <div className="text-red-600 text-sm mt-2">{redeemError}</div>}
+                    </form>
+                  ) : (
+                    <div className="text-center">
+                      <button
+                        className="w-full py-3 rounded-xl bg-gradient-to-r from-gray-300 to-gray-400 text-white font-extrabold text-lg shadow-lg cursor-not-allowed opacity-60"
+                        disabled
+                      >
+                        ⏳ Redeem (Time Lock Active)
+                      </button>
+                      <div className="text-xs text-gray-500 mt-2">
+                        {id === 1 ? 'Complete time lock to redeem' : 'Complete level to unlock'}
+                      </div>
+                    </div>
+                  )}
+                </div>
               ) : (
                 // Lock form
                 <div className="flex flex-col items-center gap-4">
